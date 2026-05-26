@@ -6,7 +6,7 @@ EMPRENDEDORES.LTD
 Pipeline: RSS feeds → Claude Haiku (clasifica) → borrador .docx → formateador Node.js → Gmail
 """
 
-import os, sys, json, yaml, hashlib, smtplib, logging, subprocess, re
+import os, sys, json, yaml, hashlib, smtplib, logging, subprocess, re, urllib.request, urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
@@ -166,6 +166,10 @@ ANÁLISIS: [2-3 oraciones de análisis ejecutivo]
 4. [Acción concreta 4]
 5. [Acción concreta 5]
 
+===HASHTAGS_DINAMICOS===
+#Tag1  #Tag2  #Tag3  #Tag4  #Tag5  #Tag6
+[6 hashtags sin espacios, en CamelCase, relevantes al contenido de esta edición]
+
 ===FIN===
 
 CRITERIOS:
@@ -173,6 +177,7 @@ CRITERIOS:
 - Lenguaje ejecutivo, no técnico
 - Perspectiva latinoamericana cuando sea posible
 - Máximo 3 noticias, 2 modelos, 2 tendencias
+- Los hashtags deben reflejar los temas específicos de esta edición (empresas, eventos, países, tecnologías mencionadas)
 """
 
     log.info("Clasificando con Claude Haiku...")
@@ -194,27 +199,46 @@ def parse_draft(draft_text):
         "veredicto": []
     }
 
+    def strip_md(text):
+        return re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+
     def extract_block(text, start_marker, end_marker):
         pattern = rf"{re.escape(start_marker)}(.*?){re.escape(end_marker)}"
         m = re.search(pattern, text, re.DOTALL)
-        return m.group(1).strip() if m else ""
+        return strip_md(m.group(1).strip()) if m else ""
 
-    data["resumen_ejecutivo"] = extract_block(
-        draft_text, "===RESUMEN_EJECUTIVO===", "===NOTICIAS_DESTACADAS==="
-    )
+    def clean(text):
+        return re.sub(r"\n*---+\s*$", "", strip_md(text)).strip()
+
+    def extract_fields(chunk, fields):
+        result = {}
+        for idx, (field, key) in enumerate(fields):
+            next_field_names = [f for f, _ in fields[idx+1:]]
+            if next_field_names:
+                lookahead = "|".join(re.escape(f + ":") for f in next_field_names)
+                pattern = rf"{re.escape(field)}:\s*(.+?)(?={lookahead}|$)"
+            else:
+                pattern = rf"{re.escape(field)}:\s*(.+?)$"
+            m = re.search(pattern, chunk, re.DOTALL)
+            result[key] = clean(m.group(1)) if m else ""
+        return result
+
+    resumen_raw = extract_block(draft_text, "===RESUMEN_EJECUTIVO===", "===NOTICIAS_DESTACADAS===")
+    data["resumen_ejecutivo"] = clean(resumen_raw)
 
     # Noticias
     noticias_block = extract_block(
         draft_text, "===NOTICIAS_DESTACADAS===", "===MODELOS_DESTACADOS==="
     )
+    NOTICIA_FIELDS = [
+        ("TÍTULO", "titulo"), ("QUÉ PASÓ", "que_paso"), ("POR QUÉ IMPORTA", "por_que_importa"),
+        ("TE AFECTA", "te_afecta"), ("RECOMENDACIÓN", "recomendacion"), ("URL", "url")
+    ]
     for chunk in re.split(r"---NOTICIA_\d+---", noticias_block):
         chunk = chunk.strip()
         if not chunk:
             continue
-        n = {}
-        for field in ["TÍTULO", "QUÉ PASÓ", "POR QUÉ IMPORTA", "TE AFECTA", "RECOMENDACIÓN", "URL"]:
-            m = re.search(rf"{field}:\s*(.+?)(?=\n[A-ZÁÉÍÓÚÑ]{{2,}}:|$)", chunk, re.DOTALL)
-            n[field.lower().replace(" ", "_").replace("é","e").replace("á","a").replace("ó","o")] = m.group(1).strip() if m else ""
+        n = extract_fields(chunk, NOTICIA_FIELDS)
         if n.get("titulo"):
             data["noticias"].append(n)
 
@@ -222,14 +246,14 @@ def parse_draft(draft_text):
     modelos_block = extract_block(
         draft_text, "===MODELOS_DESTACADOS===", "===TENDENCIAS_MERCADO==="
     )
+    MODELO_FIELDS = [
+        ("TÍTULO", "titulo"), ("DESCRIPCIÓN", "descripcion"), ("RECOMENDACIÓN", "recomendacion")
+    ]
     for chunk in re.split(r"---MODELO_\d+---", modelos_block):
         chunk = chunk.strip()
         if not chunk:
             continue
-        m = {}
-        for field in ["TÍTULO", "DESCRIPCIÓN", "RECOMENDACIÓN"]:
-            match = re.search(rf"{field}:\s*(.+?)(?=\n[A-ZÁÉÍÓÚÑ]{{2,}}:|$)", chunk, re.DOTALL)
-            m[field.lower().replace("ó","o").replace("á","a")] = match.group(1).strip() if match else ""
+        m = extract_fields(chunk, MODELO_FIELDS)
         if m.get("titulo"):
             data["modelos"].append(m)
 
@@ -237,25 +261,29 @@ def parse_draft(draft_text):
     tendencias_block = extract_block(
         draft_text, "===TENDENCIAS_MERCADO===", "===VEREDICTO_ACCIONABLE==="
     )
+    TENDENCIA_FIELDS = [("TÍTULO", "titulo"), ("ANÁLISIS", "analisis")]
     for chunk in re.split(r"---TENDENCIA_\d+---", tendencias_block):
         chunk = chunk.strip()
         if not chunk:
             continue
-        t = {}
-        for field in ["TÍTULO", "ANÁLISIS"]:
-            match = re.search(rf"{field}:\s*(.+?)(?=\n[A-ZÁÉÍÓÚÑ]{{2,}}:|$)", chunk, re.DOTALL)
-            t[field.lower().replace("á","a").replace("í","i").replace("i","i")] = match.group(1).strip() if match else ""
+        t = extract_fields(chunk, TENDENCIA_FIELDS)
         if t.get("titulo"):
             data["tendencias"].append(t)
 
     # Veredicto
     veredicto_block = extract_block(
-        draft_text, "===VEREDICTO_ACCIONABLE===", "===FIN==="
+        draft_text, "===VEREDICTO_ACCIONABLE===", "===HASHTAGS_DINAMICOS==="
     )
+    if not veredicto_block:
+        veredicto_block = extract_block(draft_text, "===VEREDICTO_ACCIONABLE===", "===FIN===")
     for line in veredicto_block.strip().splitlines():
         m = re.match(r"^\d+\.\s+(.+)", line.strip())
         if m:
             data["veredicto"].append(m.group(1).strip())
+
+    # Hashtags dinámicos
+    hashtags_block = extract_block(draft_text, "===HASHTAGS_DINAMICOS===", "===FIN===")
+    data["hashtags_dinamicos"] = re.findall(r"#\w+", hashtags_block)
 
     return data
 
@@ -342,18 +370,30 @@ def generate_draft_docx(data, edition_num, output_path):
 
 
 def run_publisher(draft_path, edition_num, cfg):
-    """Ejecuta el formateador Node.js (pulso_publisher.js)."""
-    publisher_script = BASE_DIR / "pulso_publisher.js"
+    """Ejecuta el formateador Python (pulso_publisher.py) con layout de producción."""
+    publisher_script = BASE_DIR / "pulso_publisher.py"
     output_path = OUTPUT_DIR / f"PULSO_a_la_IA_Edicion_{edition_num}.docx"
+    json_path = str(draft_path).replace('.docx', '_data.json')
+    date_str = datetime.now().strftime("%d de %B de %Y")
 
     if not publisher_script.exists():
-        log.warning("pulso_publisher.js no encontrado — se usará el borrador sin formatear")
+        log.warning("pulso_publisher.py no encontrado — se usará el borrador sin formatear")
         return draft_path
 
-    node_bin = cfg.get("node_bin", "node")
+    # Inyectar hashtags fijos del config en el JSON
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        data['hashtags_fijos'] = cfg.get('hashtags', {}).get('fixed', [])
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log.warning(f"No se pudo inyectar hashtags fijos: {e}")
+
+    python_bin = "/Users/rwagner/miniconda3/bin/python3"
     result = subprocess.run(
-        [node_bin, str(publisher_script),
-         str(draft_path), str(output_path), str(edition_num)],
+        [python_bin, str(publisher_script),
+         json_path, str(output_path), str(edition_num), date_str],
         capture_output=True, text=True, cwd=str(BASE_DIR)
     )
     if result.returncode == 0:
