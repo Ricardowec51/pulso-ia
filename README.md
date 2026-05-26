@@ -26,13 +26,23 @@ Gmail SMTP
   └─ Envía .docx final como adjunto
 ```
 
-## Instalación en Ubuntu 24.04
+## Instalación
+
+### macOS
 
 ```bash
-tar xzf pulso-ubuntu.tar.gz
-cd pulso-ubuntu
-sudo ./install.sh
+bash install_mac.sh
 ```
+
+Crea un venv Python, directorios, y registra un **LaunchAgent** que se ejecuta automáticamente cada **lunes a las 8:00 AM**.
+
+### Ubuntu 24.04
+
+```bash
+sudo bash install.sh
+```
+
+Instala dependencias del sistema, crea venv, y configura un **systemd timer** para cada **lunes a las 8:00 AM**.
 
 El instalador configura automáticamente:
 - Python 3 venv con todas las dependencias
