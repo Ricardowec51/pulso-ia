@@ -1,0 +1,10 @@
+{
+  "name": "pulso-ia-publisher",
+  "version": "1.0.0",
+  "description": "PULSO a la IA — Publisher corporativo EMPRENDEDORES.LTD",
+  "main": "pulso_publisher.js",
+  "dependencies": {
+    "docx": "^9.6.1",
+    "mammoth": "^1.8.0"
+  }
+}

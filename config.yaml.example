@@ -1,0 +1,177 @@
+# ═══════════════════════════════════════════════════════════
+#  PULSO a la IA — Configuración
+#  EMPRENDEDORES.LTD
+#
+#  Copia este archivo como config.yaml y edita con tus datos
+# ═══════════════════════════════════════════════════════════
+
+# ── API Keys ──────────────────────────────────────────────
+anthropic_api_key: "sk-ant-XXXXXXXXXXXXXXXXXXXXXXXX"
+
+# ── Email (Gmail App Password) ────────────────────────────
+email:
+  from: "tu_cuenta@gmail.com"
+  to:   "destinatario@gmail.com"
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_user: "tu_cuenta@gmail.com"
+  smtp_password: "xxxx xxxx xxxx xxxx"   # App Password de 16 chars
+
+# ── Hashtags ──────────────────────────────────────────────
+# Fijos: aparecen en TODAS las ediciones al final del documento
+# Dinámicos: se generan automáticamente según el contenido de cada edición
+hashtags:
+  fixed:
+    - "#PulsoALaIA"
+    - "#InteligenciaArtificial"
+    - "#IA"
+    - "#EMPRENDEDORES"
+    - "#Newsletter"
+    - "#Tecnologia"
+    - "#LiderAzgoDigital"
+  max_dynamic: 6   # máximo de hashtags dinámicos por edición
+
+# ── Configuración general ─────────────────────────────────
+start_edition: 1      # Número inicial (si ya tienes ediciones previas, cámbialo)
+lookback_days: 7      # Buscar artículos de los últimos N días
+max_articles: 60      # Máximo de artículos a procesar
+node_bin: "node"      # Ruta al binario node (o "node" si está en PATH)
+
+# ── Keywords de boost (aumentan relevancia) ───────────────
+boost_keywords:
+  - "artificial intelligence"
+  - "inteligencia artificial"
+  - "machine learning"
+  - "LLM"
+  - "GPT"
+  - "Claude"
+  - "Gemini"
+  - "banking"
+  - "financial"
+  - "Latin America"
+  - "Ecuador"
+  - "agentic"
+  - "automation"
+  - "regulación"
+  - "fintech"
+
+# ── Keywords de supresión (reducen relevancia) ────────────
+suppress_keywords:
+  - "crypto"
+  - "NFT"
+  - "meme"
+  - "celebrity"
+  - "gaming review"
+  - "sports"
+
+# ── Feeds RSS ─────────────────────────────────────────────
+# priority: 1=alta, 2=media, 3=baja
+# category: tech, vendors, enterprise, research, regulation, latam
+
+feeds:
+  # Fuentes de alto valor técnico/empresarial
+  - name: "MIT Technology Review"
+    url: "https://www.technologyreview.com/feed/"
+    category: research
+    priority: 1
+
+  - name: "The Verge AI"
+    url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+    category: tech
+    priority: 1
+
+  - name: "VentureBeat AI"
+    url: "https://venturebeat.com/category/ai/feed/"
+    category: tech
+    priority: 1
+
+  - name: "Anthropic Blog"
+    url: "https://www.anthropic.com/rss.xml"
+    category: vendors
+    priority: 1
+
+  - name: "Google DeepMind"
+    url: "https://deepmind.google/blog/rss.xml"
+    category: vendors
+    priority: 1
+
+  - name: "OpenAI Blog"
+    url: "https://openai.com/blog/rss"
+    category: vendors
+    priority: 1
+
+  # Noticias empresariales
+  - name: "CIO Magazine"
+    url: "https://www.cio.com/feed/"
+    category: enterprise
+    priority: 2
+
+  - name: "Computerworld"
+    url: "https://www.computerworld.com/index.rss"
+    category: enterprise
+    priority: 2
+
+  - name: "Harvard Business Review AI"
+    url: "https://hbr.org/topic/technology/feed"
+    category: enterprise
+    priority: 2
+
+  - name: "Wired AI"
+    url: "https://www.wired.com/feed/tag/ai/latest/rss"
+    category: tech
+    priority: 2
+
+  # Regulación y ética
+  - name: "AI Now Institute"
+    url: "https://ainowinstitute.org/feed"
+    category: regulation
+    priority: 2
+
+  - name: "Future of Life Institute"
+    url: "https://futureoflife.org/feed/"
+    category: regulation
+    priority: 2
+
+  # Investigación
+  - name: "EurekAlert AI"
+    url: "https://news.google.com/rss/search?q=artificial+intelligence+research&hl=en-US&gl=US&ceid=US:en"
+    category: research
+    priority: 2
+
+  - name: "ArXiv CS.AI"
+    url: "https://arxiv.org/rss/cs.AI"
+    category: research
+    priority: 3
+
+  # Banca y fintech
+  - name: "Finextra AI"
+    url: "https://www.finextra.com/rss/channel.aspx?channel=ai"
+    category: enterprise
+    priority: 1
+
+  - name: "The Financial Brand AI"
+    url: "https://thefinancialbrand.com/feed/"
+    category: enterprise
+    priority: 1
+
+  # Latinoamérica
+  - name: "iupana (fintech LATAM)"
+    url: "https://iupana.com/feed/"
+    category: latam
+    priority: 1
+
+  - name: "América Economía Tech"
+    url: "https://www.americaeconomia.com/rss.xml"
+    category: latam
+    priority: 2
+
+  # General tech
+  - name: "TechCrunch AI"
+    url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+    category: tech
+    priority: 2
+
+  - name: "Reuters Technology"
+    url: "https://feeds.reuters.com/reuters/technologyNews"
+    category: tech
+    priority: 2

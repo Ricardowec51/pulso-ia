@@ -1,0 +1,25 @@
+# Configuración con credenciales
+config.yaml
+.env
+
+# Archivos generados
+output/
+cache/
+logs/
+{logs,cache,output}/
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+
+# Documentos generados
+*.docx
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
