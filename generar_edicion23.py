@@ -17,8 +17,8 @@ from datetime import datetime
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-EDITION = 23
-DATE_STR = "24 de mayo de 2026"
+EDITION = 21
+DATE_STR = "25 de mayo de 2026"
 AZUL = RGBColor(0x00, 0x33, 0x66)      # Azul EMPRENDEDORES.LTD
 AZUL_CLARO = RGBColor(0x00, 0x70, 0xC0)
 GRIS = RGBColor(0x60, 0x60, 0x60)

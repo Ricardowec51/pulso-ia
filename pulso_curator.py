@@ -411,21 +411,22 @@ EMPRENDEDORES.LTD | emprendedores.ec
     log.info(f"Email enviado a {ec['to']}")
 
 
-def get_next_edition(cfg):
-    """Lee/incrementa el número de edición."""
+def get_next_edition(cfg, dry_run=False):
+    """Lee/incrementa el número de edición. En dry-run solo lee, no escribe."""
     edition_file = BASE_DIR / "cache" / "edition.txt"
     if edition_file.exists():
         n = int(edition_file.read_text().strip()) + 1
     else:
         n = cfg.get("start_edition", 1)
-    edition_file.write_text(str(n))
+    if not dry_run:
+        edition_file.write_text(str(n))
     return n
 
 
 def main():
     dry_run = "--dry-run" in sys.argv
     if dry_run:
-        log.info("=== MODO DRY-RUN (no se envía email) ===")
+        log.info("=== MODO DRY-RUN (sin email, sin actualizar contador) ===")
 
     cfg = load_config()
     cache = load_cache()
@@ -440,7 +441,7 @@ def main():
         return
 
     # 2. Clasificar con Haiku
-    edition_num = get_next_edition(cfg)
+    edition_num = get_next_edition(cfg, dry_run=dry_run)
     draft_text  = classify_with_haiku(articles, cfg, edition_num)
 
     # 3. Parsear borrador
