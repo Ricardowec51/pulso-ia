@@ -39,7 +39,7 @@ El instalador configura automáticamente:
 - Node.js con docx y mammoth
 - LibreOffice (para validación de páginas)
 - Estructura de directorios
-- Timer systemd (viernes 8:00 AM)
+- Timer systemd (lunes 8:00 AM)
 
 ## Configuración
 
@@ -73,7 +73,7 @@ email:
 # Ejecución manual
 ./venv/bin/python3 pulso_curator.py
 
-# Activar timer automático (viernes 8:00 AM)
+# Activar timer automático (lunes 8:00 AM)
 sudo systemctl enable --now pulso-ia.timer
 
 # Ver estado del timer
@@ -138,7 +138,7 @@ feeds:
 
 ```bash
 sudo nano /etc/systemd/system/pulso-ia.timer
-# Cambiar: OnCalendar=Fri *-*-* 08:00:00
+# Cambiar: OnCalendar=Mon *-*-* 08:00:00
 # Ejemplo lunes+miercoles+viernes: OnCalendar=Mon,Wed,Fri *-*-* 07:00:00
 sudo systemctl daemon-reload
 sudo systemctl restart pulso-ia.timer

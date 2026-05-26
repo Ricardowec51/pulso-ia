@@ -53,8 +53,8 @@ else
     echo -e "${GREEN}✓ config.yaml ya existe${NC}"
 fi
 
-# 6. Systemd timer (viernes 8:00 AM)
-echo -e "${YELLOW}[6/6] Systemd timer (viernes 8:00 AM)...${NC}"
+# 6. Systemd timer (lunes 8:00 AM)
+echo -e "${YELLOW}[6/6] Systemd timer (lunes 8:00 AM)...${NC}"
 cat > /etc/systemd/system/${SERVICE}.service << EOF
 [Unit]
 Description=PULSO a la IA — Curador semanal
@@ -78,7 +78,7 @@ cat > /etc/systemd/system/${SERVICE}.timer << EOF
 Description=PULSO a la IA — Timer semanal
 
 [Timer]
-OnCalendar=Fri *-*-* 08:00:00
+OnCalendar=Mon *-*-* 08:00:00
 Persistent=true
 
 [Install]
