@@ -6,7 +6,7 @@ EMPRENDEDORES.LTD
 Pipeline: RSS feeds → Claude Haiku (clasifica) → borrador .docx → formateador Node.js → Gmail
 """
 
-import os, sys, json, yaml, hashlib, smtplib, logging, subprocess, re, urllib.request, urllib.parse
+import os, sys, json, yaml, hashlib, smtplib, logging, subprocess, re
 from datetime import datetime, timedelta
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
@@ -411,66 +411,6 @@ EMPRENDEDORES.LTD | emprendedores.ec
     log.info(f"Email enviado a {ec['to']}")
 
 
-def post_to_facebook(data, edition_num, cfg, dry_run=False):
-    """Publica la edición en una Página de Facebook vía Graph API."""
-    fb = cfg.get("facebook", {})
-    page_id      = fb.get("page_id") or os.environ.get("FACEBOOK_PAGE_ID", "")
-    access_token = fb.get("access_token") or os.environ.get("FACEBOOK_ACCESS_TOKEN", "")
-
-    if not page_id or not access_token:
-        log.info("Facebook no configurado — se omite publicación.")
-        return
-
-    today = datetime.now().strftime("%d de %B de %Y")
-
-    # Construir el mensaje del post
-    resumen = data.get("resumen", [""])[0]  # primer párrafo
-
-    noticias_lines = "\n".join(
-        f"• {n['titulo']}" for n in data.get("noticias", []) if n.get("titulo")
-    )
-    modelos_lines = "\n".join(
-        f"• {m['titulo']}" for m in data.get("modelos", []) if m.get("titulo")
-    )
-
-    hashtags_fixed = cfg.get("hashtags", {}).get("fixed", [])
-    hashtags_str = "  ".join(hashtags_fixed)
-
-    message = f"""🚀 PULSO a la IA — Edición {edition_num} | {today}
-EMPRENDEDORES.LTD
-
-{resumen}
-
-📌 Esta semana:
-{noticias_lines}
-
-🤖 Modelos destacados:
-{modelos_lines}
-
-📩 Suscríbete gratis: www.emprendedores.ec/suscripcion
-
-{hashtags_str}"""
-
-    if dry_run:
-        log.info(f"[DRY-RUN] Post Facebook preparado ({len(message)} chars) — no se publica")
-        log.debug(message)
-        return
-
-    url = f"https://graph.facebook.com/v20.0/{page_id}/feed"
-    payload = urllib.parse.urlencode({
-        "message":      message,
-        "access_token": access_token,
-    }).encode("utf-8")
-
-    try:
-        req = urllib.request.Request(url, data=payload, method="POST")
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            result = json.loads(resp.read().decode())
-        log.info(f"Facebook publicado — post id: {result.get('id', '?')}")
-    except Exception as e:
-        log.error(f"Error publicando en Facebook: {e}")
-
-
 def get_next_edition(cfg, dry_run=False):
     """Lee/incrementa el número de edición. En dry-run solo lee, no escribe."""
     edition_file = BASE_DIR / "cache" / "edition.txt"
@@ -518,10 +458,7 @@ def main():
     # 6. Enviar por email
     send_email(final_path, edition_num, cfg, dry_run=dry_run)
 
-    # 7. Publicar en Facebook
-    post_to_facebook(data, edition_num, cfg, dry_run=dry_run)
-
-    # 8. Actualizar cache
+    # 7. Actualizar cache
     for a in articles:
         cache[a["id"]] = datetime.now().isoformat()
     save_cache(cache)

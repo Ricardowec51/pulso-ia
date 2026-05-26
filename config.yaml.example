@@ -17,13 +17,6 @@ email:
   smtp_user: "tu_cuenta@gmail.com"
   smtp_password: "xxxx xxxx xxxx xxxx"   # App Password de 16 chars
 
-# ── Facebook (opcional) ───────────────────────────────────
-# Publica automáticamente en tu Página de Facebook tras enviar el email.
-# Alternativa segura: variables de entorno FACEBOOK_PAGE_ID y FACEBOOK_ACCESS_TOKEN
-facebook:
-  page_id:      "123456789012345"          # ID de tu Página (no perfil personal)
-  access_token: "EAAxxxxxxxxxxxxxxxx"      # Page Access Token (permisos: pages_manage_posts)
-
 # ── Hashtags ──────────────────────────────────────────────
 # Fijos: aparecen en TODAS las ediciones al final del documento
 # Dinámicos: se generan automáticamente según el contenido de cada edición
