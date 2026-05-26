@@ -34,7 +34,18 @@ Gmail SMTP
 bash install_mac.sh
 ```
 
-Crea un venv Python, directorios, y registra un **LaunchAgent** que se ejecuta automáticamente cada **lunes a las 8:00 AM**.
+Crea un venv Python, directorios, y registra un **cron job** que se ejecuta automáticamente cada **lunes a las 8:00 AM**.
+
+```bash
+# Ver cron registrado
+crontab -l
+
+# Ver logs
+tail -f logs/cron.log
+
+# Desactivar
+crontab -l | grep -v "# pulso-ia" | crontab -
+```
 
 ### Ubuntu 24.04
 
