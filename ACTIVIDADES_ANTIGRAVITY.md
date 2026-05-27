@@ -32,7 +32,13 @@
   - Modificación del prompt de curación en `pulso_curator.py` a un rango de **130-155 palabras** para llenar la primera página sin riesgo de desborde.
   - Creación del algoritmo **`LayoutTracker`** en `pulso_publisher.py` para calcular el espacio vertical acumulado de los párrafos e insertar saltos de página condicionales automáticos antes de cada nueva sección grande (Noticias, Modelos, Tendencias, Veredicto).
   - Eliminación de espacios muertos al inicio del documento y separadores innecesarios para optimizar la primera página.
-  - Actualización completa de la documentación técnica y operativa en el archivo `README.md`.
+- [x] **Script de Control y Botón de Apagado (Cierre del Proyecto)**:
+  - Creado el script unificado de control `pulso_start.sh` para iniciar, detener, reiniciar y verificar el estado del Dashboard de forma centralizada.
+  - Implementado el endpoint de apagado `POST /api/shutdown` en el Backend Express para detener el Frontend Vite en el puerto 5173 y auto-detenerse limpiamente.
+  - Diseñado y acoplado el botón **Apagar Dashboard** en la barra lateral del Frontend en React con animación y pantalla de confirmación estilizada al completarse.
+  - Actualizados `README.md` y `SKILL.md` con las explicaciones del flujo manual frente a la ejecución autónoma semanal del Cron Job.
+  - Sincronizados todos los cambios locales con la carpeta `/Users/rwagner/Downloads/pulso-final/` y subido el código al repositorio remoto GitHub.
+
 
 
 

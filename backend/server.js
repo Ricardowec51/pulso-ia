@@ -190,6 +190,24 @@ app.get('/api/logs', (req, res) => {
   }
 });
 
+// 7. Apagar Dashboard (Frontend y Backend)
+app.post('/api/shutdown', (req, res) => {
+  console.log("Recibida solicitud de apagado del Dashboard...");
+  res.json({ success: true, message: "Apagando servidores..." });
+  
+  setTimeout(() => {
+    // 1. Terminar el Frontend Vite en el puerto 5173 (si está activo)
+    exec('lsof -t -i:5173 | xargs kill -9 2>/dev/null || true', (err) => {
+      if (err) console.log("Detención de frontend ignorada o completada:", err.message);
+      
+      // 2. Apagarse a sí mismo (Backend)
+      console.log("Apagando servidor Backend Express...");
+      process.exit(0);
+    });
+  }, 1000);
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor Express corriendo en http://localhost:${PORT}`);
 });
+

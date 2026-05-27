@@ -45,9 +45,9 @@ Para garantizar un acabado visual premium y equilibrado en la primera página, s
 
 ---
 
-## 🚀 Guía de Ejecución Local
+## 🚀 Guía de Ejecución del Dashboard (Manual)
 
-Sigue estos pasos en tu terminal para levantar y usar el sistema:
+El Dashboard permite previsualizar y editar de forma interactiva el boletín semanal antes de enviarlo.
 
 ### Paso 1: Configurar Variables y Credenciales
 Abre el archivo [config.yaml](file:///Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/config.yaml) e introduce tu API Key de Gemini y tus credenciales SMTP de Gmail (utilizando una *App Password*):
@@ -64,21 +64,44 @@ email:
   smtp_password: "xxxx xxxx xxxx xxxx"  # Contraseña de aplicación
 ```
 
-### Paso 2: Iniciar el Servidor Backend (API Express)
-Abre una terminal en tu Mac Mini M4 Pro y ejecuta:
-```bash
-cd /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/backend
-npm start
-```
-El servidor backend estará listo en `http://localhost:4001`.
+### Paso 2: Control del Dashboard con `pulso_start.sh` (Recomendado)
+Para facilitar el control de los servidores frontend y backend, utiliza el script unificado de control:
 
-### Paso 3: Iniciar el Cliente Frontend (React)
-Abre otra ventana de la terminal y ejecuta:
-```bash
-cd /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/frontend
-npm run dev
-```
-La interfaz web se levantará en `http://localhost:5173`. Abre esa dirección en tu navegador para interactuar con el panel de control.
+- **Iniciar el Dashboard** (levanta el Backend en 4001 y el Frontend en 5173 de fondo):
+  ```bash
+  ./pulso_start.sh start
+  ```
+- **Verificar el Estado** de los servidores:
+  ```bash
+  ./pulso_start.sh status
+  ```
+- **Detener el Dashboard**:
+  ```bash
+  ./pulso_start.sh stop
+  ```
+- **Reiniciar el Dashboard**:
+  ```bash
+  ./pulso_start.sh restart
+  ```
+
+Los logs de los procesos se guardarán en `logs/backend.log` y `logs/frontend.log` respectivamente.
+
+### Paso 3: Apagar desde la Interfaz Web (Botón)
+También puedes apagar el sistema haciendo clic en el botón **🔌 Apagar Dashboard** en la parte inferior de la barra lateral de la interfaz web (http://localhost:5173). Esto enviará una instrucción al Backend para detener el Frontend y auto-apagarse de forma limpia y ordenada, liberando ambos puertos automáticamente.
+
+### Método Alternativo: Levantar Servidores por Separado
+Si prefieres iniciar los servidores de forma manual en terminales independientes:
+1. **Backend (Express)**:
+   ```bash
+   cd backend && npm start
+   ```
+2. **Frontend (React/Vite)**:
+   ```bash
+   cd frontend && npm run dev
+   ```
+   Para apagarlos en este modo alternativo, pulsa `Ctrl + C` en sus respectivas consolas. Si los procesos se quedan atrapados en segundo plano, libera los puertos manualmente con:
+   - Backend (Puerto 4001): `kill -9 $(lsof -t -i:4001)`
+   - Frontend (Puerto 5173): `kill -9 $(lsof -t -i:5173)`
 
 ---
 

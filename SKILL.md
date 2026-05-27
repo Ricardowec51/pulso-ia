@@ -34,17 +34,29 @@ El formateador de Python lee el JSON y compila el documento aplicando la identid
 
 ---
 
-## 🛠️ Comandos de Verificación
+## 🛠️ Comandos de Control y Verificación
 
-Para ejecutar y probar esta habilidad localmente en la Mac Mini M4 Pro:
+Para operar y probar esta habilidad localmente en la Mac Mini M4 Pro:
 
-- **Modo Simulación (Dry-Run)**:
+- **Iniciar el Dashboard Web** (Backend + Frontend):
   ```bash
-  /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/.venv/bin/python3 pulso_curator.py --dry-run
+  /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/pulso_start.sh start
   ```
-- **Modo Producción (Cura, Compila y Envía)**:
+- **Detener el Dashboard Web** (o usar el botón 🔌 en la interfaz web):
+  ```bash
+  /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/pulso_start.sh stop
+  ```
+- **Verificar Estado de Servicios**:
+  ```bash
+  /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/pulso_start.sh status
+  ```
+- **Corrida Completa Manual** (Cura, Compila y Envía):
   ```bash
   /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/.venv/bin/python3 pulso_curator.py
+  ```
+- **Modo Simulación (Dry-Run)** (Cura y compila Word en /output sin enviar):
+  ```bash
+  /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/.venv/bin/python3 pulso_curator.py --dry-run
   ```
 
 ---

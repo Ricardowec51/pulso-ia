@@ -139,6 +139,31 @@ function App() {
     }
   };
 
+  // Apagar servidores del Dashboard (Backend y Frontend)
+  const handleShutdown = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas apagar por completo el Dashboard (Frontend y Backend)? Para volver a usarlo deberás iniciar el script de nuevo.')) return;
+    showNotice('info', 'Apagando servidores del Dashboard...');
+    try {
+      await fetch(`${API_BASE}/shutdown`, { method: 'POST' });
+      showNotice('success', 'El Dashboard se ha apagado. Esta página ya no responderá.');
+      setTimeout(() => {
+        document.body.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background-color:#030712; color:#f3f4f6; font-family:'Outfit', sans-serif; text-align:center; padding: 2rem;">
+            <div style="font-size:4rem; margin-bottom:1.5rem; animation: pulse 2s infinite;">🔌</div>
+            <h1 style="color:#ef4444; font-size: 2.4rem; margin-bottom: 0.8rem; font-weight: 700; letter-spacing: -0.02em;">Dashboard Apagado</h1>
+            <p style="color:#9ca3af; font-size:1.1rem; max-width: 550px; margin: 0 auto 2rem auto; line-height: 1.6;">Los servidores frontend (puerto 5173) y backend (puerto 4001) se han detenido con éxito.</p>
+            <div style="background: rgba(255,255,255,0.03); padding: 1rem 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); font-family:'JetBrains Mono', monospace; font-size: 1rem; color: #00f2fe; margin-bottom: 2.5rem; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">
+              ./pulso_start.sh start
+            </div>
+            <p style="color:#6b7280; font-size:0.9rem;">Ya puedes cerrar esta pestaña en tu navegador de forma segura.</p>
+          </div>
+        `;
+      }, 1500);
+    } catch (err) {
+      showNotice('error', 'Error al enviar la señal de apagado.');
+    }
+  };
+
   // Manejar cambios en el borrador estructurado
   const updateField = (section, index, field, value) => {
     setDraft(prev => {
@@ -208,6 +233,30 @@ function App() {
                 id="btn-publish"
               >
                 {loading.publish ? <div className="spinner" /> : '✉️'} Compilar y Enviar Correo
+              </button>
+
+              <button 
+                className="btn" 
+                onClick={handleShutdown}
+                id="btn-shutdown"
+                style={{ 
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+                  border: '1px solid rgba(239, 68, 68, 0.4)', 
+                  color: '#f87171',
+                  marginTop: '0.8rem'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.25)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                🔌 Apagar Dashboard
               </button>
             </div>
           </div>
