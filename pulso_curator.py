@@ -470,15 +470,17 @@ EMPRENDEDORES.LTD | emprendedores.ec
 
 
 def get_next_edition(cfg, dry_run=False):
-    """Lee/incrementa el número de edición. En dry-run solo lee, no escribe."""
+    """Determina la edición como la semana del año anterior a la ejecución."""
+    import datetime
+    # Se calcula como el número de semana ISO de hace 7 días (semana anterior a hoy)
+    n = (datetime.date.today() - datetime.timedelta(days=7)).isocalendar()[1]
+    
     edition_file = BASE_DIR / "cache" / "edition.txt"
-    if edition_file.exists():
-        n = int(edition_file.read_text().strip()) + 1
-    else:
-        n = cfg.get("start_edition", 1)
     if not dry_run:
+        edition_file.parent.mkdir(parents=True, exist_ok=True)
         edition_file.write_text(str(n))
     return n
+
 
 
 def main():

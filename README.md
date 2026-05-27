@@ -64,25 +64,21 @@ email:
   smtp_password: "xxxx xxxx xxxx xxxx"  # Contraseña de aplicación
 ```
 
-### Paso 2: Control del Dashboard con `pulso_start.sh` (Recomendado)
-Para facilitar el control de los servidores frontend y backend, utiliza el script unificado de control:
+### Paso 2: Control del Dashboard con `pulso` (Comando Global)
 
-- **Iniciar el Dashboard** (levanta el Backend en 4001 y el Frontend en 5173 de fondo):
-  ```bash
-  ./pulso_start.sh start
-  ```
-- **Verificar el Estado** de los servidores:
-  ```bash
-  ./pulso_start.sh status
-  ```
-- **Detener el Dashboard**:
-  ```bash
-  ./pulso_start.sh stop
-  ```
-- **Reiniciar el Dashboard**:
-  ```bash
-  ./pulso_start.sh restart
-  ```
+El instalador registra automáticamente el comando global `pulso` en tu ruta del sistema (`~/.local/bin/pulso`). De esta forma, **puedes iniciar todo simplemente abriendo una terminal y ejecutando**:
+
+```bash
+pulso
+```
+
+Esto ejecutará internamente el script `pulso.sh` del proyecto y levantará los servicios de fondo.
+
+Si deseas tener un control más granular desde la terminal, puedes usar `pulso_start.sh` dentro del directorio del proyecto:
+- **Iniciar**: `./pulso_start.sh start` (o ejecutando el acceso directo `./pulso.sh` en la raíz)
+- **Estado**: `./pulso_start.sh status`
+- **Detener**: `./pulso_start.sh stop`
+- **Reiniciar**: `./pulso_start.sh restart`
 
 Los logs de los procesos se guardarán en `logs/backend.log` y `logs/frontend.log` respectivamente.
 

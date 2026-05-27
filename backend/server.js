@@ -17,13 +17,23 @@ const VENV_PYTHON = path.join(PROJECT_ROOT, '.venv', 'bin', 'python3');
 app.use(cors());
 app.use(express.json());
 
+// Helper para calcular la semana ISO anterior
+function getPreviousWeekNumber() {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
 // Helper para obtener el número de edición actual
 function getCurrentEdition() {
   const file = path.join(CACHE_DIR, 'edition.txt');
   if (fs.existsSync(file)) {
     return parseInt(fs.readFileSync(file, 'utf8').trim(), 10);
   }
-  return 0;
+  return getPreviousWeekNumber();
 }
 
 // Helper para formatear la fecha actual en español

@@ -18,7 +18,7 @@ echo "════════════════════════�
 echo -e "${NC}"
 
 # 1. Entorno Python
-echo -e "${YELLOW}[1/4] Entorno Python (venv)...${NC}"
+echo -e "${YELLOW}[1/6] Entorno Python (venv)...${NC}"
 cd "$SCRIPT_DIR"
 
 if [ -f "$HOME/miniconda3/bin/python3" ]; then
@@ -35,13 +35,22 @@ fi
 ./venv/bin/pip install -q feedparser anthropic python-docx pyyaml requests
 echo -e "${GREEN}✓ OK — usando $(./venv/bin/python3 --version)${NC}"
 
-# 2. Directorios
-echo -e "${YELLOW}[2/4] Directorios...${NC}"
+# 2. Dependencias del Dashboard (Node.js)
+echo -e "${YELLOW}[2/6] Instalando dependencias del Dashboard (Node.js)...${NC}"
+cd "$SCRIPT_DIR/backend"
+npm install --silent
+cd "$SCRIPT_DIR/frontend"
+npm install --silent
+cd "$SCRIPT_DIR"
+echo -e "${GREEN}✓ OK${NC}"
+
+# 3. Directorios
+echo -e "${YELLOW}[3/6] Directorios...${NC}"
 mkdir -p "$SCRIPT_DIR"/{logs,cache,output}
 echo -e "${GREEN}✓ OK${NC}"
 
-# 3. Configuración
-echo -e "${YELLOW}[3/4] Configuración...${NC}"
+# 4. Configuración
+echo -e "${YELLOW}[4/6] Configuración...${NC}"
 if [ ! -f "$SCRIPT_DIR/config.yaml" ]; then
     cp "$SCRIPT_DIR/config.yaml.example" "$SCRIPT_DIR/config.yaml"
     echo -e "${YELLOW}  ⚠ config.yaml creado — edítalo antes de continuar${NC}"
@@ -49,12 +58,22 @@ else
     echo -e "${GREEN}✓ config.yaml ya existe${NC}"
 fi
 
-# 4. Cron job (lunes 8:00 AM)
-echo -e "${YELLOW}[4/4] Cron job (lunes 8:00 AM)...${NC}"
+# 5. Cron job (lunes 8:00 AM)
+echo -e "${YELLOW}[5/6] Cron job (lunes 8:00 AM)...${NC}"
 CRON_LINE="0 8 * * 1 cd \"$SCRIPT_DIR\" && ./venv/bin/python3 pulso_curator.py >> \"$SCRIPT_DIR/logs/cron.log\" 2>&1 $CRON_TAG"
 
 # Quitar entrada anterior si existe, luego agregar la nueva
 ( crontab -l 2>/dev/null | grep -v "$CRON_TAG" ; echo "$CRON_LINE" ) | crontab -
+echo -e "${GREEN}✓ OK${NC}"
+
+# 6. Comando Global "pulso"
+echo -e "${YELLOW}[6/6] Registrando comando global 'pulso' en ~/.local/bin/pulso...${NC}"
+mkdir -p "$HOME/.local/bin"
+cat << EOF > "$HOME/.local/bin/pulso"
+#!/bin/bash
+"$SCRIPT_DIR/pulso.sh" "\$@"
+EOF
+chmod +x "$HOME/.local/bin/pulso"
 echo -e "${GREEN}✓ OK${NC}"
 
 # Resumen
@@ -67,15 +86,18 @@ echo ""
 echo -e "  1. Edita credenciales:"
 echo -e "     ${BLUE}nano $SCRIPT_DIR/config.yaml${NC}"
 echo ""
-echo -e "  2. Prueba manual (sin esperar el lunes):"
-echo -e "     ${BLUE}cd $SCRIPT_DIR && ./venv/bin/python3 pulso_curator.py${NC}"
+echo -e "  2. Iniciar el Dashboard desde cualquier terminal:"
+echo -e "     ${BLUE}pulso${NC}"
 echo ""
-echo -e "  3. Ver cron activo:"
+echo -e "  3. Prueba manual de curación (sin enviar email):"
+echo -e "     ${BLUE}cd $SCRIPT_DIR && ./venv/bin/python3 pulso_curator.py --dry-run${NC}"
+echo ""
+echo -e "  4. Ver cron activo:"
 echo -e "     ${BLUE}crontab -l${NC}"
 echo ""
-echo -e "  4. Ver logs:"
+echo -e "  5. Ver logs:"
 echo -e "     ${BLUE}tail -f $SCRIPT_DIR/logs/cron.log${NC}"
 echo ""
-echo -e "  5. Desactivar el timer:"
+echo -e "  6. Desactivar el timer:"
 echo -e "     ${BLUE}crontab -l | grep -v '$CRON_TAG' | crontab -${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"

@@ -19,13 +19,13 @@ echo "════════════════════════�
 echo -e "${NC}"
 
 # 1. Paquetes del sistema
-echo -e "${YELLOW}[1/6] Paquetes del sistema...${NC}"
+echo -e "${YELLOW}[1/7] Paquetes del sistema...${NC}"
 apt-get update -qq
 apt-get install -y -qq python3 python3-pip python3-venv nodejs npm libreoffice-writer poppler-utils curl
 echo -e "${GREEN}✓ OK${NC}"
 
 # 2. Python venv + dependencias
-echo -e "${YELLOW}[2/6] Entorno Python...${NC}"
+echo -e "${YELLOW}[2/7] Entorno Python...${NC}"
 cd "$SCRIPT_DIR"
 python3 -m venv venv
 ./venv/bin/pip install -q --upgrade pip
@@ -33,19 +33,19 @@ python3 -m venv venv
 echo -e "${GREEN}✓ OK${NC}"
 
 # 3. Node.js dependencias
-echo -e "${YELLOW}[3/6] Node.js (docx + mammoth)...${NC}"
+echo -e "${YELLOW}[3/7] Node.js (docx + mammoth)...${NC}"
 npm install --silent
 echo -e "${GREEN}✓ OK${NC}"
 
 # 4. Permisos y directorios
-echo -e "${YELLOW}[4/6] Directorios y permisos...${NC}"
+echo -e "${YELLOW}[4/7] Directorios y permisos...${NC}"
 mkdir -p "$SCRIPT_DIR"/{logs,cache,output}
 chmod +x "$SCRIPT_DIR/pulso_curator.py"
 chown -R "$USUARIO":"$USUARIO" "$SCRIPT_DIR"
 echo -e "${GREEN}✓ OK${NC}"
 
 # 5. Configuración
-echo -e "${YELLOW}[5/6] Configuración...${NC}"
+echo -e "${YELLOW}[5/7] Configuración...${NC}"
 if [ ! -f "$SCRIPT_DIR/config.yaml" ]; then
     cp "$SCRIPT_DIR/config.yaml.example" "$SCRIPT_DIR/config.yaml"
     echo -e "${YELLOW}  ⚠ config.yaml creado — edítalo antes de continuar${NC}"
@@ -54,7 +54,7 @@ else
 fi
 
 # 6. Systemd timer (lunes 8:00 AM)
-echo -e "${YELLOW}[6/6] Systemd timer (lunes 8:00 AM)...${NC}"
+echo -e "${YELLOW}[6/7] Systemd timer (lunes 8:00 AM)...${NC}"
 cat > /etc/systemd/system/${SERVICE}.service << EOF
 [Unit]
 Description=PULSO a la IA — Curador semanal
@@ -88,6 +88,15 @@ EOF
 systemctl daemon-reload
 echo -e "${GREEN}✓ OK${NC}"
 
+# 7. Comando Global "pulso"
+echo -e "${YELLOW}[7/7] Registrando comando global 'pulso' en /usr/local/bin/pulso...${NC}"
+cat << EOF > /usr/local/bin/pulso
+#!/bin/bash
+"$SCRIPT_DIR/pulso.sh" "\$@"
+EOF
+chmod +x /usr/local/bin/pulso
+echo -e "${GREEN}✓ OK${NC}"
+
 # Resumen
 echo -e "\n${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  ✅ Instalación completada${NC}"
@@ -98,12 +107,15 @@ echo ""
 echo -e "  1. Edita credenciales:"
 echo -e "     ${BLUE}nano $SCRIPT_DIR/config.yaml${NC}"
 echo ""
-echo -e "  2. Prueba sin enviar email:"
+echo -e "  2. Iniciar el Dashboard desde cualquier terminal:"
+echo -e "     ${BLUE}pulso${NC}"
+echo ""
+echo -e "  3. Prueba sin enviar email:"
 echo -e "     ${BLUE}cd $SCRIPT_DIR && ./venv/bin/python3 pulso_curator.py --dry-run${NC}"
 echo ""
-echo -e "  3. Activa el timer automático:"
+echo -e "  4. Activa el timer automático:"
 echo -e "     ${BLUE}sudo systemctl enable --now ${SERVICE}.timer${NC}"
 echo ""
-echo -e "  4. Ejecución manual:"
+echo -e "  5. Ejecución manual:"
 echo -e "     ${BLUE}sudo systemctl start ${SERVICE}.service${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
