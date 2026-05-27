@@ -15,7 +15,7 @@ from email.mime.text import MIMEText
 from email import encoders
 
 import feedparser
-import anthropic
+from google import genai
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -105,9 +105,14 @@ def fetch_feeds(cfg, cache):
     return articles[:cfg.get("max_articles", 60)]
 
 
-def classify_with_haiku(articles, cfg, edition_num):
-    """Claude Haiku clasifica y redacta el borrador editorial."""
-    client = anthropic.Anthropic(api_key=cfg["anthropic_api_key"])
+def generate_with_gemini(articles, cfg, edition_num):
+    """Google Gemini clasifica y redacta el borrador editorial."""
+    api_key = cfg.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        log.error("API Key de Gemini no configurada en config.yaml ni en la variable de entorno GEMINI_API_KEY")
+        sys.exit(1)
+
+    client = genai.Client(api_key=api_key)
 
     articles_text = "\n\n".join([
         f"[{i+1}] FUENTE: {a['source']} | CATEGORÍA: {a['category']}\n"
@@ -116,6 +121,7 @@ def classify_with_haiku(articles, cfg, edition_num):
     ])
 
     today = datetime.now().strftime("%d de %B de %Y")
+    model_name = cfg.get("gemini_model", "gemini-2.5-flash")
 
     prompt = f"""Eres el editor de "PULSO a la IA", publicación semanal de EMPRENDEDORES.LTD para ejecutivos del sector bancario, comercial y agroindustrial en Ecuador y Latinoamérica.
 
@@ -129,7 +135,7 @@ Tu tarea: Selecciona los artículos MÁS RELEVANTES para ejecutivos latinoameric
 ESTRUCTURA OBLIGATORIA (respeta exactamente estos marcadores):
 
 ===RESUMEN_EJECUTIVO===
-[2-3 párrafos con la tesis editorial de la semana. Qué tendencia dominante hay. Impacto para el sector financiero/agroindustrial latinoamericano.]
+[Exactamente 2 párrafos bien estructurados (un total de 130-155 palabras para todo el resumen ejecutivo). Debe contener la tesis editorial de la semana y el impacto en banca, comercio o agroindustria en LATAM, redactado con estilo formal de nivel ejecutivo. Aporta profundidad para llenar la página de forma equilibrada.]
 
 ===NOTICIAS_DESTACADAS===
 ---NOTICIA_1---
@@ -180,13 +186,25 @@ CRITERIOS:
 - Los hashtags deben reflejar los temas específicos de esta edición (empresas, eventos, países, tecnologías mencionadas)
 """
 
-    log.info("Clasificando con Claude Haiku...")
-    msg = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return msg.content[0].text
+    import time
+    log.info(f"Clasificando con Google Gemini ({model_name})...")
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            log.warning(f"Intento {attempt+1} falló al llamar a Gemini API: {e}")
+            if attempt < max_retries - 1:
+                sleep_time = (attempt + 1) * 4
+                log.info(f"Reintentando en {sleep_time} segundos...")
+                time.sleep(sleep_time)
+            else:
+                log.error(f"Error definitivo llamando a Gemini API después de {max_retries} intentos: {e}")
+                sys.exit(1)
 
 
 def parse_draft(draft_text):
@@ -390,7 +408,7 @@ def run_publisher(draft_path, edition_num, cfg):
     except Exception as e:
         log.warning(f"No se pudo inyectar hashtags fijos: {e}")
 
-    python_bin = "/Users/rwagner/miniconda3/bin/python3"
+    python_bin = sys.executable
     result = subprocess.run(
         [python_bin, str(publisher_script),
          json_path, str(output_path), str(edition_num), date_str],
@@ -464,9 +482,28 @@ def get_next_edition(cfg, dry_run=False):
 
 
 def main():
+    # ── Argumentos especiales para integraciones de API ──
+    if "--send-only" in sys.argv:
+        # Uso: pulso_curator.py --send-only <docx_path> <edition_num>
+        try:
+            idx = sys.argv.index("--send-only")
+            docx_path = Path(sys.argv[idx+1])
+            edition_num = int(sys.argv[idx+2])
+            cfg = load_config()
+            log.info(f"Enviando correo directo para edición {edition_num} con {docx_path}...")
+            send_email(docx_path, edition_num, cfg, dry_run=False)
+            sys.exit(0)
+        except Exception as e:
+            log.error(f"Error en --send-only: {e}")
+            sys.exit(1)
+
     dry_run = "--dry-run" in sys.argv
+    curate_only = "--curate-only" in sys.argv
+
     if dry_run:
         log.info("=== MODO DRY-RUN (sin email, sin actualizar contador) ===")
+    elif curate_only:
+        log.info("=== MODO CURATE-ONLY (curación y generación de borrador JSON, sin enviar) ===")
 
     cfg = load_config()
     cache = load_cache()
@@ -480,9 +517,9 @@ def main():
         log.info("Sin artículos nuevos. Abortando.")
         return
 
-    # 2. Clasificar con Haiku
+    # 2. Generar con Gemini
     edition_num = get_next_edition(cfg, dry_run=dry_run)
-    draft_text  = classify_with_haiku(articles, cfg, edition_num)
+    draft_text  = generate_with_gemini(articles, cfg, edition_num)
 
     # 3. Parsear borrador
     data = parse_draft(draft_text)
@@ -491,6 +528,14 @@ def main():
     # 4. Guardar borrador .docx simple
     draft_path = OUTPUT_DIR / f"borrador_edicion_{edition_num}.docx"
     generate_draft_docx(data, edition_num, draft_path)
+
+    # Si es curate-only, salimos aquí (guardando cache de artículos procesados)
+    if curate_only:
+        for a in articles:
+            cache[a["id"]] = datetime.now().isoformat()
+        save_cache(cache)
+        log.info(f"=== Curación completada para Edición {edition_num} ===")
+        return
 
     # 5. Ejecutar publisher formateador
     final_path = run_publisher(draft_path, edition_num, cfg)

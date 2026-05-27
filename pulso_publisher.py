@@ -107,6 +107,52 @@ VEREDICTO = [
 
 # ── Utilidades de formato ──────────────────────────────────────────────────────
 
+def truncate_text(text, max_len=55):
+    if not text:
+        return ""
+    if len(text) <= max_len:
+        return text
+    truncated = text[:max_len]
+    last_space = truncated.rfind(' ')
+    if last_space > 0:
+        truncated = truncated[:last_space]
+    return truncated.strip() + "..."
+
+
+def format_list_index(titles, max_len=50):
+    if not titles:
+        return ""
+    if len(titles) == 1:
+        return truncate_text(titles[0], max_len)
+    elif len(titles) == 2:
+        joined = f"{titles[0]} y {titles[1]}"
+        if len(joined) <= max_len:
+            return joined
+    first = truncate_text(titles[0], max_len - 12)
+    return f"{first} (y {len(titles)-1} más)"
+
+
+class LayoutTracker:
+    def __init__(self, page_height_limit=500):  # 500pt es aprox 70% de la altura imprimible (700pt)
+        self.current_height = 0
+        self.limit = page_height_limit
+
+    def add_height(self, points):
+        self.current_height += points
+        if self.current_height > 700:
+            self.current_height = self.current_height % 700
+
+    def force_page_break(self):
+        self.current_height = 0
+
+    def check_break_before_section(self, doc, section_height=130):
+        if self.current_height > self.limit or (self.current_height + section_height) > 700:
+            doc.add_page_break()
+            self.current_height = 0
+            return True
+        return False
+
+
 def add_colored_paragraph(doc, text, color=AZUL, size=12, bold=False, align=WD_ALIGN_PARAGRAPH.LEFT, space_before=0, space_after=6):
     p = doc.add_paragraph()
     p.alignment = align
@@ -156,6 +202,8 @@ def add_label_value(doc, label, value, label_color=AZUL_CLARO, value_color=RGBCo
 
 def set_margins(doc, top=2.5, bottom=2.2, left=2.5, right=2.5):
     section = doc.sections[0]
+    section.page_width = Inches(8.5)
+    section.page_height = Inches(11.0)
     section.top_margin    = Cm(top)
     section.bottom_margin = Cm(bottom)
     section.left_margin   = Cm(left)
@@ -376,12 +424,12 @@ def add_summary_block(doc, paragraphs_text):
     cell = tbl.cell(0, 0)
     _remove_cell_borders(cell)
     _set_cell_bg(cell, 'E3F2FD')
-    _set_cell_margins(cell, top=300, left=360, bottom=300, right=360)
+    _set_cell_margins(cell, top=240, left=360, bottom=240, right=360)
 
     # Título dentro del recuadro
     p_title = cell.paragraphs[0]
-    p_title.paragraph_format.space_before = Pt(4)
-    p_title.paragraph_format.space_after = Pt(8)
+    p_title.paragraph_format.space_before = Pt(3)
+    p_title.paragraph_format.space_after = Pt(6)
     r_t = p_title.add_run("📊 RESUMEN EJECUTIVO")
     r_t.bold = True
     r_t.font.size = Pt(11)
@@ -392,9 +440,9 @@ def add_summary_block(doc, paragraphs_text):
         p = cell.add_paragraph()
         p.paragraph_format.space_before = Pt(6)
         p.paragraph_format.space_after = Pt(6)
-        p.paragraph_format.line_spacing = Pt(17)
+        p.paragraph_format.line_spacing = Pt(20)
         r = p.add_run(texto)
-        r.font.size = Pt(12)
+        r.font.size = Pt(13)
         r.font.color.rgb = RGBColor(0x1a, 0x1a, 0x1a)
 
 
@@ -498,6 +546,11 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     set_margins(doc)
     setup_header_footer(doc)
 
+    # Eliminar el primer párrafo vacío por defecto de Word
+    if len(doc.paragraphs) > 0 and doc.paragraphs[0].text == "":
+        p = doc.paragraphs[0]._element
+        p.getparent().remove(p)
+
     # Fuente cuerpo 12pt — Normal style Y docDefaults
     doc.styles['Normal'].font.size = Pt(12)
     styles_el = doc.styles.element
@@ -513,23 +566,28 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     # ── PORTADA ───────────────────────────────────────────────────────────────
     add_title_block(doc, edition, date_str)
 
-    p_sep = doc.add_paragraph()
-    p_sep.paragraph_format.space_before = Pt(0)
-    p_sep.paragraph_format.space_after = Pt(10)
-
     # Índice de contenidos
     add_section_header(doc, "En esta edición")
+    
+    num_acciones = len(veredicto)
+    
+    resumen_desc = f"Tesis: {truncate_text(resumen_ejecutivo[0], 50)}" if resumen_ejecutivo else "Tesis de la semana"
+    noticias_desc = format_list_index([n['titulo'] for n in noticias], 50)
+    modelos_desc = format_list_index([m['titulo'] for m in modelos], 50)
+    tendencias_desc = format_list_index([t['titulo'] for t in tendencias], 50)
+    veredicto_desc = f"{num_acciones} acciones clave para implementar esta semana"
+    
     indice = [
-        ("📊", "Resumen Ejecutivo", (resumen_ejecutivo[0][:80] + "…") if resumen_ejecutivo else ""),
-        ("📰", "Noticias Destacadas", "  ·  ".join(n['titulo'] for n in noticias)),
-        ("🤖", "Modelos Destacados", "  ·  ".join(m['titulo'] for m in modelos)),
-        ("📈", "Tendencias del Mercado", "  ·  ".join(t['titulo'] for t in tendencias)),
-        ("✅", "Veredicto Accionable", "5 acciones concretas para esta semana"),
+        ("📊", "Resumen Ejecutivo", resumen_desc),
+        ("📰", "Noticias Destacadas", noticias_desc),
+        ("🤖", "Modelos Destacados", modelos_desc),
+        ("📈", "Tendencias del Mercado", tendencias_desc),
+        ("✅", "Veredicto Accionable", veredicto_desc),
     ]
     for emoji, titulo, desc in indice:
         p = doc.add_paragraph()
-        p.paragraph_format.space_before = Pt(5)
-        p.paragraph_format.space_after = Pt(5)
+        p.paragraph_format.space_before = Pt(3)
+        p.paragraph_format.space_after = Pt(3)
         r1 = p.add_run(f"{emoji}  {titulo}: ")
         r1.bold = True
         r1.font.size = Pt(12)
@@ -541,8 +599,15 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     # ── RESUMEN EJECUTIVO ─────────────────────────────────────────────────────
     add_summary_block(doc, resumen_ejecutivo)
 
+    # Inicializar tracker de diseño para las siguientes páginas
+    tracker = LayoutTracker()
+
     # ── NOTICIAS DESTACADAS (Páginas 2–4) ────────────────────────────────────
+    doc.add_page_break()
+    tracker.force_page_break()
     add_section_header(doc, "📰 Noticias Destacadas")
+    tracker.add_height(35)
+    
     for i, n in enumerate(noticias, 1):
         p = doc.add_paragraph()
         p.paragraph_format.space_before = Pt(12)
@@ -551,6 +616,9 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r.bold = True
         r.font.size = Pt(12)
         r.font.color.rgb = AZUL
+        
+        title_lines = 2 if len(n['titulo']) > 55 else 1
+        tracker.add_height(17 + title_lines * 15)
 
         for label, key in [
             ("Qué pasó:", "que_paso"),
@@ -569,6 +637,9 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
             r2 = p2.add_run(n[key])
             r2.font.size = Pt(12)
             r2.font.color.rgb = RGBColor(0x1a, 0x1a, 0x1a)
+            
+            desc_lines = max(1, len(n[key]) // 65)
+            tracker.add_height(8 + desc_lines * 17)
 
         p3 = doc.add_paragraph()
         p3.paragraph_format.space_before = Pt(3)
@@ -577,9 +648,13 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r3.font.size = Pt(8)
         r3.font.color.rgb = GRIS
         r3.italic = True
+        tracker.add_height(11 + 8)
 
     # ── MODELOS DESTACADOS (Página 4) ────────────────────────────────────────
+    tracker.check_break_before_section(doc, section_height=150)
     add_section_header(doc, "🤖 Modelos Destacados")
+    tracker.add_height(35)
+    
     for i, m in enumerate(modelos, 1):
         p = doc.add_paragraph()
         p.paragraph_format.space_before = Pt(12)
@@ -588,6 +663,9 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r.bold = True
         r.font.size = Pt(12)
         r.font.color.rgb = AZUL
+        
+        title_lines = 2 if len(m['titulo']) > 55 else 1
+        tracker.add_height(17 + title_lines * 15)
 
         p2 = doc.add_paragraph()
         p2.paragraph_format.space_before = Pt(4)
@@ -596,6 +674,9 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r2 = p2.add_run(m["descripcion"])
         r2.font.size = Pt(12)
         r2.font.color.rgb = RGBColor(0x1a, 0x1a, 0x1a)
+        
+        desc_lines = max(1, len(m["descripcion"]) // 65)
+        tracker.add_height(8 + desc_lines * 17)
 
         p3 = doc.add_paragraph()
         p3.paragraph_format.space_before = Pt(4)
@@ -607,9 +688,15 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r3b = p3.add_run(m["recomendacion"])
         r3b.font.size = Pt(12)
         r3b.font.color.rgb = RGBColor(0x1a, 0x1a, 0x1a)
+        
+        rec_lines = max(1, len(m["recomendacion"]) // 65)
+        tracker.add_height(10 + rec_lines * 17)
 
     # ── TENDENCIAS DEL MERCADO (Página 4–5) ──────────────────────────────────
+    tracker.check_break_before_section(doc, section_height=130)
     add_section_header(doc, "📈 Tendencias del Mercado")
+    tracker.add_height(35)
+    
     for i, t in enumerate(tendencias, 1):
         p = doc.add_paragraph()
         p.paragraph_format.space_before = Pt(12)
@@ -618,6 +705,9 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r.bold = True
         r.font.size = Pt(12)
         r.font.color.rgb = AZUL
+        
+        title_lines = 2 if len(t['titulo']) > 55 else 1
+        tracker.add_height(17 + title_lines * 15)
 
         p2 = doc.add_paragraph()
         p2.paragraph_format.space_before = Pt(4)
@@ -626,9 +716,15 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r2 = p2.add_run(t["analisis"])
         r2.font.size = Pt(12)
         r2.font.color.rgb = RGBColor(0x1a, 0x1a, 0x1a)
+        
+        analysis_lines = max(1, len(t["analisis"]) // 65)
+        tracker.add_height(12 + analysis_lines * 17)
 
     # ── VEREDICTO ACCIONABLE (Página 5) ──────────────────────────────────────
+    tracker.check_break_before_section(doc, section_height=260)
     add_section_header(doc, "✅ Veredicto Accionable")
+    tracker.add_height(35)
+    
     p_intro = doc.add_paragraph()
     p_intro.paragraph_format.space_before = Pt(6)
     p_intro.paragraph_format.space_after = Pt(6)
@@ -636,6 +732,7 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     r_intro.bold = True
     r_intro.font.size = Pt(12)
     r_intro.font.color.rgb = AZUL
+    tracker.add_height(12 + 12)
 
     for i, item in enumerate(veredicto, 1):
         p = doc.add_paragraph()
@@ -650,6 +747,9 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
         r = p.add_run(item)
         r.font.size = Pt(12)
         r.font.color.rgb = RGBColor(0x1a, 0x1a, 0x1a)
+        
+        item_lines = max(1, len(item) // 60)
+        tracker.add_height(12 + item_lines * 17)
 
     # ── SUSCRIPCIÓN ───────────────────────────────────────────────────────────
     p_subs = doc.add_paragraph()

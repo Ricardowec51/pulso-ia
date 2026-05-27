@@ -1,166 +1,121 @@
-# PULSO a la IA — Pipeline Autónomo
+# PULSO a la IA — Pipeline Autónomo y Dashboard Web
 **EMPRENDEDORES.LTD**
 
-Pipeline completamente autónomo que extrae noticias de IA, las procesa con Claude Haiku, genera un documento Word corporativo formateado y lo envía por Gmail.
+Este proyecto es un sistema de curación y generación de newsletters ejecutivos semanales sobre Inteligencia Artificial para el sector financiero, comercial y agroindustrial de Latinoamérica. El sistema recopila información de múltiples feeds RSS, procesa y resume las noticias de mayor impacto utilizando la API de Google Gemini, permite la previsualización y edición de borradores a través de un panel de control web moderno, y compila la versión final en un documento Word (.docx) corporativo de alta calidad para su distribución.
 
-## Flujo completo
+---
+
+## 🛠️ Arquitectura General
+
+El pipeline del proyecto está compuesto por los siguientes módulos integrados:
 
 ```
-20 Feeds RSS
-     │
-     ▼
-pulso_curator.py
-  ├─ feedparser (descarga artículos)
-  ├─ filtra por keywords y fecha
-  ├─ Claude Haiku (clasifica + redacta borrador editorial)
-  ├─ genera borrador .docx + _data.json
-     │
-     ▼
-pulso_publisher.js
-  ├─ Lee _data.json del borrador
-  ├─ Genera .docx corporativo (5 páginas, diseño azul EMPRENDEDORES.LTD)
-  ├─ Banner, header/footer, índice, secciones, Veredicto Accionable
-     │
-     ▼
-Gmail SMTP
-  └─ Envía .docx final como adjunto
+                  20 Feeds RSS
+                       │
+                       ▼
+               pulso_curator.py (Google Gemini Curation)
+                       │
+         ┌─────────────┴─────────────┐
+         ▼                           ▼
+  [--curate-only]              [--send-only]
+Genera borrador JSON y       Compila Word final y envía
+docx simple en /output       por email a suscriptores
+         │                           ▲
+         ▼                           │
+   Backend Express (Node.js - Puerto 4001) <---> Frontend Dashboard (React/Vite - Puerto 5173)
 ```
 
-## Instalación
+1. **Curador de Noticias (`pulso_curator.py`)**: Script en Python que descarga artículos de feeds RSS, los filtra por fecha y relevancia y utiliza el modelo `gemini-flash-latest` para redactar la tesis y el contenido en el formato estructurado del boletín.
+2. **Formateador Word (`pulso_publisher.py`)**: Generador en Python que compila los datos del JSON en un documento Word siguiendo la identidad corporativa de EMPRENDEDORES.LTD (colores azul oscuro, azul claro y gris corporativo).
+3. **Servidor API (`backend/server.js`)**: Aplicación Node.js Express en el puerto `4001` que expone los endpoints para lanzar la curación, leer borradores, guardar cambios, compilar documentos y enviar correos.
+4. **Dashboard Web (`frontend/src/App.jsx`)**: Interfaz React + Vite en el puerto `5173` diseñada con tema oscuro y glassmorphism. Permite la edición interactiva del borrador de cada edición y el control del pipeline con un clic.
 
-### macOS
+---
 
-```bash
-bash install_mac.sh
-```
+## 🎨 Reglas de Diseño y Formato (Página 1)
 
-Crea un venv Python, directorios, y registra un **cron job** que se ejecuta automáticamente cada **lunes a las 8:00 AM**.
+Para garantizar un acabado visual premium y equilibrado en la primera página, se implementan los siguientes estándares lógicos:
 
-```bash
-# Ver cron registrado
-crontab -l
+- **Banner de Título**: Conserva su altura completa original (con márgenes de celda de `420` dxa) para mantener el impacto visual del branding de la publicación.
+- **Índice Dinámico e Informativo**: Cada elemento del índice ("En esta edición") se compacta a una sola línea dinámica con descripciones informativas (ej: `📰 Noticias Destacadas: Diagnóstico económico... (y 2 más)`) y un espaciado reducido de `Pt(3)` para evitar líneas huérfanas.
+- **Resumen Ejecutivo Destacado**: Se aumenta el tamaño de la letra a **13pt** (interlineado `Pt(20)` y espaciado de párrafos `Pt(6)`) para darle máxima importancia editorial.
+- **Control de Longitud por IA**: El prompt de curación exige a Gemini generar exactamente **2 párrafos con un total de 110-130 palabras**.
+- **Ajuste de Margen de Página**: Configuración explícita en código a tamaño **Carta (Letter)** para evitar desajustes causados por la configuración del sistema operativo.
+- **Algoritmo `LayoutTracker` (Saltos de Página Condicionales)**: Clase en `pulso_publisher.py` que estima el espacio vertical acumulado de los elementos en cada página. Si al iniciar una nueva sección (como *Modelos*, *Tendencias* o *Veredicto*) el espacio actual supera el **70% de la página** (500pt), el sistema inserta un salto de página automático condicional para evitar que el encabezado de sección quede aislado en el fondo de una página anterior.
 
-# Ver logs
-tail -f logs/cron.log
+---
 
-# Desactivar
-crontab -l | grep -v "# pulso-ia" | crontab -
-```
+## 🚀 Guía de Ejecución Local
 
-### Ubuntu 24.04
+Sigue estos pasos en tu terminal para levantar y usar el sistema:
 
-```bash
-sudo bash install.sh
-```
-
-Instala dependencias del sistema, crea venv, y configura un **systemd timer** para cada **lunes a las 8:00 AM**.
-
-El instalador configura automáticamente:
-- Python 3 venv con todas las dependencias
-- Node.js con docx y mammoth
-- LibreOffice (para validación de páginas)
-- Estructura de directorios
-- Timer systemd (lunes 8:00 AM)
-
-## Configuración
-
-```bash
-nano config.yaml
-```
-
-Campos obligatorios:
+### Paso 1: Configurar Variables y Credenciales
+Abre el archivo [config.yaml](file:///Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/config.yaml) e introduce tu API Key de Gemini y tus credenciales SMTP de Gmail (utilizando una *App Password*):
 ```yaml
-anthropic_api_key: "sk-ant-..."
+gemini_api_key: "TU_API_KEY_DE_GOOGLE_STUDIO"
+gemini_model: "gemini-flash-latest"
+
 email:
-  from: "tu@gmail.com"
-  to:   "destino@gmail.com"
-  smtp_password: "xxxx xxxx xxxx xxxx"  # App Password Gmail
+  from: "tu_correo@gmail.com"
+  to: "ricardowec@gmail.com"
+  smtp_server: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_user: "tu_correo@gmail.com"
+  smtp_password: "xxxx xxxx xxxx xxxx"  # Contraseña de aplicación
 ```
 
-**Gmail App Password:**
-1. `myaccount.google.com` → Seguridad → Verificación en 2 pasos (activar)
-2. Seguridad → Contraseñas de aplicaciones → Generar para "Mail"
-3. Copiar los 16 caracteres en `config.yaml`
-
-## Uso
-
+### Paso 2: Iniciar el Servidor Backend (API Express)
+Abre una terminal en tu Mac Mini M4 Pro y ejecuta:
 ```bash
-# Verificar instalación
-./health_check.sh
-
-# Prueba sin enviar email
-./venv/bin/python3 pulso_curator.py --dry-run
-
-# Ejecución manual
-./venv/bin/python3 pulso_curator.py
-
-# Activar timer automático (lunes 8:00 AM)
-sudo systemctl enable --now pulso-ia.timer
-
-# Ver estado del timer
-systemctl list-timers pulso-ia.timer
-
-# Ver logs
-tail -f logs/pulso.log
-tail -f logs/systemd.log
+cd /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/backend
+npm start
 ```
+El servidor backend estará listo en `http://localhost:4001`.
 
-## Estructura de archivos
-
-```
-pulso-ubuntu/
-├── install.sh              # Instalador principal
-├── pulso_curator.py        # Curator: RSS → Haiku → borrador
-├── pulso_publisher.js      # Publisher: borrador → .docx corporativo
-├── config.yaml.example     # Plantilla de configuración
-├── config.yaml             # Tu configuración (NO subir a git)
-├── health_check.sh         # Verificación de dependencias
-├── package.json            # Dependencias Node.js
-├── node_modules/           # Instaladas por npm
-├── venv/                   # Entorno Python
-├── logs/
-│   ├── pulso.log           # Log del curador
-│   └── systemd.log         # Log del timer systemd
-├── cache/
-│   ├── seen_articles.json  # Cache de artículos procesados
-│   └── edition.txt         # Número de edición actual
-└── output/
-    ├── borrador_edicion_N.docx      # Borrador simple
-    ├── borrador_edicion_N_data.json # Datos estructurados
-    └── PULSO_a_la_IA_Edicion_N.docx # Documento final formateado
-```
-
-## Portabilidad
-
-Todo usa paths relativos al script. Para mover a otro equipo:
+### Paso 3: Iniciar el Cliente Frontend (React)
+Abre otra ventana de la terminal y ejecuta:
 ```bash
-# En el equipo destino:
-tar xzf pulso-ubuntu.tar.gz
-cd pulso-ubuntu
-sudo ./install.sh         # Recrea venv y node_modules
-nano config.yaml          # Verificar credenciales
-./health_check.sh
+cd /Users/rwagner/.gemini/antigravity/scratch/pulso-ia-gemini/frontend
+npm run dev
 ```
+La interfaz web se levantará en `http://localhost:5173`. Abre esa dirección en tu navegador para interactuar con el panel de control.
 
-El cache y los logs son locales y pueden eliminarse sin problema.
+---
 
-## Agregar/modificar feeds
+## ⚙️ Uso Manual vía Terminal
 
-En `config.yaml`:
-```yaml
-feeds:
-  - name: "Nombre descriptivo"
-    url: "https://example.com/rss"
-    category: "tech"       # tech, vendors, enterprise, research, regulation, latam
-    priority: 1            # 1=alta, 2=media, 3=baja
-```
+Si prefieres ejecutar el pipeline desde la consola sin usar el panel de control:
 
-## Cambiar día/hora del timer
+1. **Simulación de Curación (Modo Dry-Run)**:
+   Descarga los feeds RSS, consulta a Gemini y genera el Word final localmente en `/output` sin enviar correos:
+   ```bash
+   ./.venv/bin/python3 pulso_curator.py --dry-run
+   ```
+2. **Ejecución Completa (Cura y Envía)**:
+   ```bash
+   ./.venv/bin/python3 pulso_curator.py
+   ```
+3. **Solo Envío**:
+   Envía un archivo Word compilado a la lista de correo del boletín:
+   ```bash
+   ./.venv/bin/python3 pulso_curator.py --send-only "/ruta/al/documento.docx" "26"
+   ```
 
-```bash
-sudo nano /etc/systemd/system/pulso-ia.timer
-# Cambiar: OnCalendar=Mon *-*-* 08:00:00
-# Ejemplo lunes+miercoles+viernes: OnCalendar=Mon,Wed,Fri *-*-* 07:00:00
-sudo systemctl daemon-reload
-sudo systemctl restart pulso-ia.timer
-```
+---
+
+## ⏰ Programación Automática (Cron Job)
+
+El instalador registra un cron job en macOS para ejecutar el proceso todos los **lunes a las 8:00 AM**.
+
+- **Inspeccionar cron jobs activos**:
+  ```bash
+  crontab -l
+  ```
+- **Ver los logs de las ejecuciones programadas**:
+  ```bash
+  tail -f logs/cron.log
+  ```
+- **Detener el envío automático programado**:
+  ```bash
+  crontab -l | grep -v "# pulso-ia" | crontab -
+  ```
