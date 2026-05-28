@@ -133,23 +133,23 @@ def format_list_index(titles, max_len=50):
 
 
 class LayoutTracker:
-    def __init__(self, page_height_limit=500):  # 500pt es aprox 70% de la altura imprimible (700pt)
+    def __init__(self, page_height_limit=620):  # Alto útil real de página carta (puntos)
         self.current_height = 0
-        self.limit = page_height_limit
+        self.limit = 310  # Límite del 50% de la página (la mitad)
 
     def add_height(self, points):
-        self.current_height += points
-        if self.current_height > 700:
-            self.current_height = self.current_height % 700
+        if self.current_height + points <= 620:
+            self.current_height += points
+        else:
+            # Word empuja el bloque entero a la siguiente página.
+            # Por lo tanto, la altura en la nueva página empieza exactamente con el tamaño de este bloque.
+            self.current_height = points
 
     def force_page_break(self):
         self.current_height = 0
 
     def check_break_before_section(self, doc, section_height=130):
-        if self.current_height > self.limit or (self.current_height + section_height) > 700:
-            doc.add_page_break()
-            self.current_height = 0
-            return True
+        # Desactivado a petición del usuario para dejar que Word maneje el flujo libremente.
         return False
 
 
@@ -165,11 +165,11 @@ def add_colored_paragraph(doc, text, color=AZUL, size=12, bold=False, align=WD_A
     return p
 
 
-def add_section_header(doc, text):
+def add_section_header(doc, text, space_before=14, space_after=4):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    p.paragraph_format.space_before = Pt(14)
-    p.paragraph_format.space_after = Pt(4)
+    p.paragraph_format.space_before = Pt(space_before)
+    p.paragraph_format.space_after = Pt(space_after)
     run = p.add_run(text.upper())
     run.bold = True
     run.font.size = Pt(11)
@@ -389,12 +389,12 @@ def add_title_block(doc, edition, date_str):
     cell = tbl.cell(0, 0)
     _remove_cell_borders(cell)
     _set_cell_bg(cell, '003366')
-    _set_cell_margins(cell, top=420, left=440, bottom=420, right=440)
+    _set_cell_margins(cell, top=300, left=440, bottom=300, right=440)
 
     p1 = cell.paragraphs[0]
     p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p1.paragraph_format.space_before = Pt(8)
-    p1.paragraph_format.space_after = Pt(6)
+    p1.paragraph_format.space_before = Pt(4)
+    p1.paragraph_format.space_after = Pt(2)
     r1 = p1.add_run(f"PULSO a la IA  ·  Edición {edition}")
     r1.bold = True
     r1.font.size = Pt(26)
@@ -402,16 +402,16 @@ def add_title_block(doc, edition, date_str):
 
     p2 = cell.add_paragraph()
     p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p2.paragraph_format.space_before = Pt(4)
-    p2.paragraph_format.space_after = Pt(6)
+    p2.paragraph_format.space_before = Pt(2)
+    p2.paragraph_format.space_after = Pt(3)
     r2 = p2.add_run("Inteligencia Artificial para ejecutivos de banca,\ncomercio y agroindustria en Latinoamérica")
     r2.font.size = Pt(12)
     r2.font.color.rgb = RGBColor(0xCC, 0xE5, 0xFF)
 
     p3 = cell.add_paragraph()
     p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p3.paragraph_format.space_before = Pt(6)
-    p3.paragraph_format.space_after = Pt(8)
+    p3.paragraph_format.space_before = Pt(2)
+    p3.paragraph_format.space_after = Pt(4)
     r3 = p3.add_run(f"EMPRENDEDORES.LTD  ·  {date_str}")
     r3.bold = True
     r3.font.size = Pt(11)
@@ -424,12 +424,12 @@ def add_summary_block(doc, paragraphs_text):
     cell = tbl.cell(0, 0)
     _remove_cell_borders(cell)
     _set_cell_bg(cell, 'E3F2FD')
-    _set_cell_margins(cell, top=240, left=360, bottom=240, right=360)
+    _set_cell_margins(cell, top=180, left=360, bottom=180, right=360)
 
     # Título dentro del recuadro
     p_title = cell.paragraphs[0]
-    p_title.paragraph_format.space_before = Pt(3)
-    p_title.paragraph_format.space_after = Pt(6)
+    p_title.paragraph_format.space_before = Pt(1)
+    p_title.paragraph_format.space_after = Pt(3)
     r_t = p_title.add_run("📊 RESUMEN EJECUTIVO")
     r_t.bold = True
     r_t.font.size = Pt(11)
@@ -438,9 +438,9 @@ def add_summary_block(doc, paragraphs_text):
 
     for texto in paragraphs_text:
         p = cell.add_paragraph()
-        p.paragraph_format.space_before = Pt(6)
-        p.paragraph_format.space_after = Pt(6)
-        p.paragraph_format.line_spacing = Pt(20)
+        p.paragraph_format.space_before = Pt(2)
+        p.paragraph_format.space_after = Pt(2)
+        p.paragraph_format.line_spacing = Pt(18)
         r = p.add_run(texto)
         r.font.size = Pt(13)
         r.font.color.rgb = RGBColor(0x1a, 0x1a, 0x1a)
@@ -567,7 +567,7 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     add_title_block(doc, edition, date_str)
 
     # Índice de contenidos
-    add_section_header(doc, "En esta edición")
+    add_section_header(doc, "En esta edición", space_before=8, space_after=2)
     
     num_acciones = len(veredicto)
     
@@ -586,8 +586,8 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     ]
     for emoji, titulo, desc in indice:
         p = doc.add_paragraph()
-        p.paragraph_format.space_before = Pt(3)
-        p.paragraph_format.space_after = Pt(3)
+        p.paragraph_format.space_before = Pt(1)
+        p.paragraph_format.space_after = Pt(1)
         r1 = p.add_run(f"{emoji}  {titulo}: ")
         r1.bold = True
         r1.font.size = Pt(12)
@@ -817,20 +817,55 @@ def patch_headers_xml(docx_path, edition, date_str):
 <w:hdr {NS}><w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr></w:p></w:hdr>"""
 
     # ── XML del header con contenido (páginas 2+) ─────────────────────────────
+    # Diseñado con una tabla invisible de dos columnas para alinear perfectamente
+    # el título y fecha a la izquierda y el nombre de la empresa a la derecha.
     HDR_CONTENT = f"""<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
 <w:hdr {NS}>
-  <w:p>
-    <w:pPr>
-      <w:pStyle w:val="Header"/>
-      <w:jc w:val="left"/>
-      <w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="003366"/></w:pBdr>
-      <w:tabs><w:tab w:val="right" w:pos="9072"/></w:tabs>
-    </w:pPr>
-    <w:r><w:rPr><w:b/><w:color w:val="003366"/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">PULSO a la IA</w:t></w:r>
-    <w:r><w:rPr><w:color w:val="606060"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">  ·  Edición {EDITION}  ·  {DATE_STR}</w:t></w:r>
-    <w:r><w:tab/></w:r>
-    <w:r><w:rPr><w:b/><w:color w:val="0070C0"/><w:sz w:val="20"/></w:rPr><w:t>EMPRENDEDORES.LTD</w:t></w:r>
-  </w:p>
+  <w:tbl>
+    <w:tblPr>
+      <w:tblW w:w="9406" w:type="dxa"/>
+      <w:tblBorders>
+        <w:top w:val="none"/>
+        <w:left w:val="none"/>
+        <w:bottom w:val="single" w:sz="6" w:space="4" w:color="003366"/>
+        <w:right w:val="none"/>
+        <w:insideH w:val="none"/>
+        <w:insideV w:val="none"/>
+      </w:tblBorders>
+      <w:tblLayout w:type="fixed"/>
+    </w:tblPr>
+    <w:tblGrid>
+      <w:gridCol w:w="6236"/>
+      <w:gridCol w:w="3170"/>
+    </w:tblGrid>
+    <w:tr>
+      <w:tc>
+        <w:tcPr>
+          <w:tcW w:w="6236" w:type="dxa"/>
+        </w:tcPr>
+        <w:p>
+          <w:pPr>
+            <w:pStyle w:val="Header"/>
+            <w:jc w:val="left"/>
+          </w:pPr>
+          <w:r><w:rPr><w:b/><w:color w:val="003366"/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">PULSO a la IA</w:t></w:r>
+          <w:r><w:rPr><w:color w:val="606060"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">  ·  Edición {edition}  ·  {date_str}</w:t></w:r>
+        </w:p>
+      </w:tc>
+      <w:tc>
+        <w:tcPr>
+          <w:tcW w:w="3170" w:type="dxa"/>
+        </w:tcPr>
+        <w:p>
+          <w:pPr>
+            <w:pStyle w:val="Header"/>
+            <w:jc w:val="right"/>
+          </w:pPr>
+          <w:r><w:rPr><w:b/><w:color w:val="0070C0"/><w:sz w:val="20"/></w:rPr><w:t>EMPRENDEDORES.LTD</w:t></w:r>
+        </w:p>
+      </w:tc>
+    </w:tr>
+  </w:tbl>
 </w:hdr>"""
 
     # ── XML del footer (mismo en página 1 y resto) ────────────────────────────

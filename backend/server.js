@@ -12,7 +12,13 @@ const PROJECT_ROOT = path.join(__dirname, '..');
 const CACHE_DIR = path.join(PROJECT_ROOT, 'cache');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'output');
 const LOGS_DIR = path.join(PROJECT_ROOT, 'logs');
-const VENV_PYTHON = path.join(PROJECT_ROOT, '.venv', 'bin', 'python3');
+
+let pythonBin = path.join(PROJECT_ROOT, '.venv', 'bin', 'python3');
+if (!fs.existsSync(pythonBin)) {
+  pythonBin = path.join(PROJECT_ROOT, 'venv', 'bin', 'python3');
+}
+const VENV_PYTHON = pythonBin;
+
 
 app.use(cors());
 app.use(express.json());
@@ -113,28 +119,50 @@ app.get('/api/draft', (req, res) => {
   }
 });
 
-// 4. Guardar cambios hechos en el borrador JSON
+// 4. Guardar cambios hechos en el borrador JSON (y opcionalmente actualizar número de edición)
 app.post('/api/draft', (req, res) => {
   try {
-    const edition = getCurrentEdition();
+    let edition = getCurrentEdition();
+    let draftData = req.body;
+
+    // Si viene estructurado con currentEdition y data para renombrar/guardar en otra edición
+    if (req.body.currentEdition !== undefined && req.body.data !== undefined) {
+      const newEdition = parseInt(req.body.currentEdition, 10);
+      if (!isNaN(newEdition)) {
+        const file = path.join(CACHE_DIR, 'edition.txt');
+        fs.writeFileSync(file, newEdition.toString(), 'utf8');
+        edition = newEdition;
+      }
+      draftData = req.body.data;
+    }
+
     const jsonPath = path.join(OUTPUT_DIR, `borrador_edicion_${edition}_data.json`);
     
-    if (!fs.existsSync(jsonPath)) {
-      return res.status(404).json({
-        success: false,
-        error: `No existe un borrador de la edición ${edition} para actualizar.`
-      });
-    }
-    
-    const draftData = req.body;
     fs.writeFileSync(jsonPath, JSON.stringify(draftData, null, 2), 'utf8');
     console.log(`Borrador JSON de la edición ${edition} actualizado.`);
     
-    res.json({ success: true, message: "Borrador guardado exitosamente." });
+    res.json({ success: true, message: "Borrador guardado exitosamente.", edition });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// 4.5. Cambiar el número de edición activa en cache/edition.txt
+app.post('/api/edition', (req, res) => {
+  try {
+    const { edition } = req.body;
+    if (edition === undefined || isNaN(parseInt(edition, 10))) {
+      return res.status(400).json({ success: false, error: "Número de edición inválido." });
+    }
+    const file = path.join(CACHE_DIR, 'edition.txt');
+    fs.writeFileSync(file, parseInt(edition, 10).toString(), 'utf8');
+    console.log(`Edición activa cambiada a: ${edition}`);
+    res.json({ success: true, message: "Edición activa actualizada con éxito.", edition: parseInt(edition, 10) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 // 5. Compilar Word y enviar por Email
 app.post('/api/publish', (req, res) => {
@@ -159,6 +187,15 @@ app.post('/api/publish', (req, res) => {
       if (pubErr) {
         console.error("Error compilando Word:", pubErr);
         return res.status(500).json({ success: false, error: "Error compilando documento Word.", details: pubStderr });
+      }
+      
+      // Copiar de forma automática el archivo compilado a la carpeta principal de Descargas del usuario
+      try {
+        const downloadsDest = path.join('/Users/rwagner/Downloads', `PULSO_a_la_IA_Edicion_${edition}.docx`);
+        fs.copyFileSync(finalDocxPath, downloadsDest);
+        console.log(`✓ Archivo copiado automáticamente a Descargas: ${downloadsDest}`);
+      } catch (copyErr) {
+        console.error("Error copiando el archivo a Descargas:", copyErr);
       }
       
       // Paso 5.2: Enviar el correo electrónico con --send-only

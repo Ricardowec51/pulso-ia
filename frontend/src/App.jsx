@@ -9,6 +9,7 @@ function App() {
   const [logs, setLogs] = useState('Cargando logs...');
   const [loading, setLoading] = useState({ curate: false, save: false, publish: false });
   const [notification, setNotification] = useState(null);
+  const [editionInput, setEditionInput] = useState('');
   const terminalEndRef = useRef(null);
 
   // Cargar estado inicial
@@ -18,6 +19,7 @@ function App() {
       const data = await res.json();
       if (data.success) {
         setStatus(data);
+        setEditionInput(data.currentEdition);
       }
     } catch (err) {
       showNotice('error', 'Error conectando con el servidor backend.');
@@ -102,11 +104,12 @@ function App() {
       const res = await fetch(`${API_BASE}/draft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draft)
+        body: JSON.stringify({ currentEdition: parseInt(editionInput, 10), data: draft })
       });
       const data = await res.json();
       if (data.success) {
         showNotice('success', 'Borrador guardado exitosamente.');
+        await loadStatus();
       } else {
         showNotice('error', 'Error guardando borrador: ' + data.error);
       }
@@ -117,12 +120,27 @@ function App() {
     }
   };
 
-  // Compilar Word y enviar por Correo
+  // Compilar Word y enviar por Correo (guarda automáticamente primero)
   const handlePublish = async () => {
-    if (!window.confirm('¿Estás seguro de compilar y enviar esta edición por correo electrónico?')) return;
+    if (!window.confirm('¿Estás seguro de compilar y enviar esta edición por correo electrónico? Se guardarán los cambios actuales de forma automática.')) return;
     setLoading(prev => ({ ...prev, publish: true }));
-    showNotice('info', 'Compilando documento final y enviando correo...');
+    showNotice('info', 'Guardando borrador actual en disco...');
     try {
+      // Paso 1: Guardar automáticamente el estado actual
+      const saveRes = await fetch(`${API_BASE}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentEdition: parseInt(editionInput, 10), data: draft })
+      });
+      const saveData = await saveRes.json();
+      if (!saveData.success) {
+        showNotice('error', 'Error al guardar los cambios antes de publicar: ' + saveData.error);
+        setLoading(prev => ({ ...prev, publish: false }));
+        return;
+      }
+
+      // Paso 2: Compilar y enviar correo
+      showNotice('info', 'Borrador guardado. Compilando documento final y enviando correo...');
       const res = await fetch(`${API_BASE}/publish`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
@@ -136,6 +154,28 @@ function App() {
     } finally {
       setLoading(prev => ({ ...prev, publish: false }));
       loadLogs();
+    }
+  };
+
+  // Cambiar edición activa en el backend y recargar borrador
+  const handleSwitchEdition = async () => {
+    if (!editionInput) return;
+    try {
+      const res = await fetch(`${API_BASE}/edition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ edition: parseInt(editionInput, 10) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotice('success', `Edición activa cambiada a #${editionInput}`);
+        await loadStatus();
+        await loadDraft();
+      } else {
+        showNotice('error', 'Error al cambiar de edición: ' + data.error);
+      }
+    } catch (err) {
+      showNotice('error', 'Error conectando con el servidor.');
     }
   };
 
@@ -185,9 +225,56 @@ function App() {
           <h1>PULSO a la IA</h1>
           <p>Panel Administrativo y Curador Autónomo de Newsletter · EMPRENDEDORES.LTD</p>
         </div>
-        <div className="status-badge">
+        <div className="status-badge" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.4rem 1rem' }}>
           <div className="pulse-dot"></div>
-          <span>Edición Activa: #{status.currentEdition} | {status.fecha}</span>
+          <span>Edición Activa: #</span>
+          <input
+            type="number"
+            value={editionInput}
+            onChange={(e) => setEditionInput(e.target.value)}
+            style={{
+              width: '60px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '6px',
+              color: '#fff',
+              textAlign: 'center',
+              fontWeight: '700',
+              fontSize: '0.95rem',
+              padding: '0.2rem 0.1rem',
+              outline: 'none',
+              transition: 'border-color 0.2s',
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#00f2fe'}
+            onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+          />
+          <button 
+            onClick={handleSwitchEdition}
+            style={{
+              background: 'rgba(0, 112, 192, 0.25)',
+              border: '1px solid rgba(0, 112, 192, 0.5)',
+              color: '#66ccff',
+              padding: '0.25rem 0.6rem',
+              borderRadius: '6px',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(0, 112, 192, 0.4)';
+              e.currentTarget.style.borderColor = 'rgba(0, 112, 192, 0.8)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(0, 112, 192, 0.25)';
+              e.currentTarget.style.borderColor = 'rgba(0, 112, 192, 0.5)';
+            }}
+          >
+            Cargar
+          </button>
+          <span style={{ marginLeft: '0.4rem', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.8rem', color: 'var(--text-secondary)' }}>
+            {status.fecha}
+          </span>
         </div>
       </header>
 
