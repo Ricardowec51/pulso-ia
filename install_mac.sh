@@ -32,8 +32,10 @@ fi
 
 "$PYTHON" -m venv venv
 ./venv/bin/pip install -q --upgrade pip
-./venv/bin/pip install -q feedparser anthropic python-docx pyyaml requests
+./venv/bin/pip install -q feedparser google-genai python-docx pyyaml requests
 echo -e "${GREEN}✓ OK — usando $(./venv/bin/python3 --version)${NC}"
+
+
 
 # 2. Dependencias del Dashboard (Node.js)
 echo -e "${YELLOW}[2/6] Instalando dependencias del Dashboard (Node.js)...${NC}"

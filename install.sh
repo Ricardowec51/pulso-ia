@@ -29,8 +29,9 @@ echo -e "${YELLOW}[2/7] Entorno Python...${NC}"
 cd "$SCRIPT_DIR"
 python3 -m venv venv
 ./venv/bin/pip install -q --upgrade pip
-./venv/bin/pip install -q feedparser anthropic python-docx pyyaml requests
+./venv/bin/pip install -q feedparser google-genai python-docx pyyaml requests
 echo -e "${GREEN}✓ OK${NC}"
+
 
 # 3. Node.js dependencias
 echo -e "${YELLOW}[3/7] Node.js (docx + mammoth)...${NC}"
